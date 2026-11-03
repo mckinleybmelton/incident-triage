@@ -1,30 +1,55 @@
-# Incident triage (Grok Bot customer simulation)
+# Incident triage (Agent SDK)
 
-Customer pain: on-call engineers spend the first part of every incident figuring out what broke and whether it matters.
+On-call engineers spend the first part of every incident figuring out what broke and whether it matters. This repo is an **Agent SDK** agent that:
 
-This repo is a **Grok Bot** setup playbook — not an Agent SDK TypeScript agent. It shows how a customer would wire Prometheus Alertmanager, Loki, Git, and Slack through a Bot + webhook routine.
+1. Accepts Prometheus Alertmanager webhooks
+2. Queries Grafana Loki for logs and Git for recent commits
+3. Posts a short triage summary to Slack
 
 ## Quick start
 
-1. Read **[docs/customer-setup.md](docs/customer-setup.md)** and follow the steps in Grok Bot.
-2. Paste routine text from **[docs/routine-instructions.md](docs/routine-instructions.md)**.
-3. Point Alertmanager at the routine using **[fixtures/alertmanager/receiver.snippet.yml](fixtures/alertmanager/receiver.snippet.yml)**.
-4. Smoke-test with **[fixtures/alertmanager/firing.json](fixtures/alertmanager/firing.json)** (curl instructions in the setup doc).
+```bash
+npm install
+npx --yes "@grok/agent-sdk@0.5.0" validate --dir .
+npx --yes "@grok/agent-sdk@0.5.0" dev --dir .
+```
 
-## Docs
+Playground: follow the URL printed by `dev`. Webhook (with `serve --dev`):
 
-| Doc | Purpose |
+```bash
+curl -sS -X POST "http://127.0.0.1:3000/incident-triage/v1/channels/alertmanager/" \
+  -H "Authorization: Bearer $INCIDENT_TRIAGE_WEBHOOK_SECRET" \
+  -H 'content-type: application/json' \
+  --data-binary @fixtures/alertmanager/firing.json
+```
+
+## Layout
+
+| Path | Role |
 | --- | --- |
-| [docs/customer-setup.md](docs/customer-setup.md) | End-to-end customer setup |
-| [docs/routine-instructions.md](docs/routine-instructions.md) | Copy-paste routine Instructions |
-| [docs/connectors.md](docs/connectors.md) | Slack, Loki MCP, Git options |
-| [docs/gaps-vs-agent-sdk.md](docs/gaps-vs-agent-sdk.md) | Limits and when to upgrade |
+| `bot/` | Agent instructions, tools, channels |
+| `evals/` | Smoke eval |
+| `fixtures/alertmanager/` | Sample Alertmanager payload + receiver snippet |
+| `docs/grok-bot/` | Alternate **Grok Bot** customer playbook (no TypeScript) |
 
-## Flow
+## Slack app
 
-Alertmanager → Grok Bot webhook routine → Loki + Git evidence → Slack triage summary → optional Slack follow-ups.
+`bot/channels/slack.ts` is ready with `envPrefix: INCIDENT_TRIAGE`. Mint tokens (needs `agent-sdk login`):
 
-## Out of scope
+```bash
+npx --yes "@grok/agent-sdk@0.5.0" slack create --dir . --name "Incident Triage" --prefix INCIDENT_TRIAGE
+```
 
-- Building or hosting a production Loki MCP server (customer supplies a public HTTPS MCP)
-- Agent SDK scaffold / Cursor agent hosting deploy (see gaps doc for the upgrade path)
+## Config
+
+See [`.env.example`](.env.example). Set values in `.env.local` or deployment secrets (names only in git):
+
+- `INCIDENT_TRIAGE_SLACK_BOT_TOKEN` / `INCIDENT_TRIAGE_SLACK_APP_TOKEN`
+- `INCIDENT_TRIAGE_WEBHOOK_SECRET`
+- `LOKI_URL` (+ optional `LOKI_TOKEN`)
+- `GIT_REPO_PATH` and/or `GITHUB_TOKEN` + `GITHUB_REPO`
+- `SLACK_TRIAGE_CHANNEL`
+
+## Alternate path
+
+A chat-configured Grok Bot version of this flow (routines + apps/MCP) lives under [docs/grok-bot/](docs/grok-bot/customer-setup.md).
