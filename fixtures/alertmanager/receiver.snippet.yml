@@ -1,0 +1,29 @@
+# Alertmanager receiver snippet for Grok Bot "Alert webhook triage" routine.
+# Replace POST_TO_URL and ROUTINE_BEARER_KEY from the routine's Webhook section.
+# Merge into your existing alertmanager.yml; do not commit real keys.
+
+route:
+  receiver: grok-bot-triage
+  group_by: ["alertname", "service", "namespace"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers:
+        - severity =~ "critical|warning"
+      receiver: grok-bot-triage
+      continue: false
+
+receivers:
+  - name: grok-bot-triage
+    webhook_configs:
+      - url: "POST_TO_URL"
+        send_resolved: true
+        max_alerts: 10
+        http_config:
+          authorization:
+            type: Bearer
+            credentials: "ROUTINE_BEARER_KEY"
+          follow_redirects: true
+
+# Optional: keep a page/Slack receiver as a separate route if Grok Bot is additive.
