@@ -36,7 +36,7 @@ export default defineChannel<AlertChannelState>({
 
         const prompt = [
           "Triage this Alertmanager webhook.",
-          "Read alert.json, call query_loki and recent_commits, then post_slack_triage once.",
+          "Read alert.json, call query_loki and recent_commits, then post_slack_triage once with groupKey and status.",
           `groupKey=${summary.groupKey}`,
           `status=${summary.status}`,
           `alertname=${summary.alertname}`,

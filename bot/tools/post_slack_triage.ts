@@ -4,22 +4,35 @@ import * as z from "zod/v4";
 type DedupeRecord = {
   postedAt: string;
   channel: string;
+  groupKey: string;
+  status: string;
   ts?: string;
 };
 
+function isMissingSlackCredentials(detail: string): boolean {
+  return /No Slack bot token|SLACK_[A-Z0-9_]*TOKEN|missing credentials|set INCIDENT_TRIAGE_SLACK/i.test(
+    detail,
+  );
+}
+
 export default defineTool({
   description:
-    "Post an incident triage summary to Slack. Idempotent per groupKey via host kv.",
+    "Post an incident triage summary to Slack. Idempotent per groupKey+status via host kv (so firing and resolved can both post).",
   effect: "idempotent",
   inputSchema: z.object({
     groupKey: z.string().describe("Alertmanager groupKey used for dedupe."),
+    status: z
+      .string()
+      .describe(
+        "Alertmanager status for this delivery (e.g. firing or resolved). Included in the dedupe key.",
+      ),
     text: z.string().describe("Triage summary markdown/plain text for Slack."),
     channel: z
       .string()
       .optional()
       .describe("Override SLACK_TRIAGE_CHANNEL (#name or C…)."),
   }),
-  async execute({ groupKey, text, channel }, ctx) {
+  async execute({ groupKey, status, text, channel }, ctx) {
     const dest = channel ?? process.env.SLACK_TRIAGE_CHANNEL;
     if (!dest) {
       return {
@@ -29,7 +42,8 @@ export default defineTool({
       };
     }
 
-    const dedupeKey = `slack-triage:${groupKey}`;
+    const normalizedStatus = status.trim().toLowerCase() || "unknown";
+    const dedupeKey = `slack-triage:${groupKey}:${normalizedStatus}`;
     const existing = (await ctx.host.kv.get(dedupeKey)) as
       | DedupeRecord
       | undefined;
@@ -38,6 +52,7 @@ export default defineTool({
         ok: true,
         deduped: true,
         groupKey,
+        status: normalizedStatus,
         channel: existing.channel,
         ts: existing.ts,
         postedAt: existing.postedAt,
@@ -54,6 +69,8 @@ export default defineTool({
       const record: DedupeRecord = {
         postedAt: new Date().toISOString(),
         channel: dest,
+        groupKey,
+        status: normalizedStatus,
         ts: typeof result.ts === "string" ? result.ts : undefined,
       };
       await ctx.host.kv.put(dedupeKey, record);
@@ -61,26 +78,21 @@ export default defineTool({
         ok: true,
         deduped: false,
         groupKey,
+        status: normalizedStatus,
         channel: dest,
         ts: record.ts,
       };
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
-      const missingCreds =
-        /SLACK_|token|credential|not configured|unavailable/i.test(detail);
-      if (missingCreds) {
-        const record: DedupeRecord = {
-          postedAt: new Date().toISOString(),
-          channel: dest,
-          ts: "dry-run-no-slack",
-        };
-        await ctx.host.kv.put(dedupeKey, record);
+      if (isMissingSlackCredentials(detail)) {
+        // Do not write kv — a later run with real credentials must still post.
         return {
-          ok: true,
+          ok: false,
           dryRun: true,
-          reason: "Slack credentials unavailable; recorded dedupe only",
+          reason: "Slack credentials unavailable; nothing posted or deduped",
           detail,
           groupKey,
+          status: normalizedStatus,
           channel: dest,
           textPreview: text.slice(0, 200),
         };
@@ -90,6 +102,7 @@ export default defineTool({
         reason: "Slack post failed",
         detail,
         groupKey,
+        status: normalizedStatus,
         channel: dest,
       };
     }
