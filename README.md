@@ -17,7 +17,8 @@ npx --yes "@grok/agent-sdk@0.5.0" dev --dir .
 Playground: follow the URL printed by `dev`. Webhook (with `serve --dev`):
 
 ```bash
-curl -sS -X POST "http://127.0.0.1:3000/incident-triage/v1/channels/alertmanager/" \
+# With `serve --mode single` / `agent-sdk dev` the routes hang at the server root:
+curl -sS -X POST "http://127.0.0.1:3000/v1/channels/alertmanager/" \
   -H "Authorization: Bearer $INCIDENT_TRIAGE_WEBHOOK_SECRET" \
   -H 'content-type: application/json' \
   --data-binary @fixtures/alertmanager/firing.json
