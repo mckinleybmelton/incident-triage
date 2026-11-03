@@ -30,7 +30,7 @@ This Grok Bot playbook matches how many customers want to start: chat-configured
 Treat the pilot as successful when:
 
 1. A new teammate can follow [customer-setup.md](customer-setup.md) without Agent SDK docs.
-2. `curl` of [../fixtures/alertmanager/firing.json](../fixtures/alertmanager/firing.json) returns **200** and a triage-shaped Slack message appears.
+2. `curl` of [../../fixtures/alertmanager/firing.json](../../fixtures/alertmanager/firing.json) returns **200** and a triage-shaped Slack message appears.
 3. On-call can ask a narrow follow-up in Slack and get an evidence-backed reply.
 4. The team has read this gaps doc and knows when to escalate to Agent SDK.
 

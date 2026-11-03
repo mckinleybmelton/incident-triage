@@ -73,7 +73,7 @@ In chat with the Bot (adapt channel name):
 ```text
 Create a routine named "Alert webhook triage".
 Trigger: webhook.
-When it runs, follow the Instruction in docs/routine-instructions.md under "Alert webhook triage"
+When it runs, follow the Instruction in docs/grok-bot/routine-instructions.md under "Alert webhook triage"
 (or paste that Instruction block here).
 Always post the final triage to Slack channel #oncall-triage.
 Do not remediate.
@@ -93,7 +93,7 @@ Keep the key secret. Rotate by editing the routine with the Bot if it leaks.
 
 ## 5. Point Alertmanager at the routine
 
-1. Use [../fixtures/alertmanager/receiver.snippet.yml](../fixtures/alertmanager/receiver.snippet.yml) as a template.
+1. Use [../../fixtures/alertmanager/receiver.grok-bot.snippet.yml](../../fixtures/alertmanager/receiver.grok-bot.snippet.yml) as a template.
 2. Replace `POST_TO_URL` and `ROUTINE_BEARER_KEY` with values from the routine Webhook section.
 3. Reload Alertmanager.
 4. Prefer Alertmanager `group_by` / `group_wait` / `group_interval` so one noisy symptom becomes one webhook delivery when possible.

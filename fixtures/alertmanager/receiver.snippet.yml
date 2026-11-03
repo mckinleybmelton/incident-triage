@@ -1,9 +1,16 @@
-# Alertmanager receiver snippet for Grok Bot "Alert webhook triage" routine.
-# Replace POST_TO_URL and ROUTINE_BEARER_KEY from the routine's Webhook section.
-# Merge into your existing alertmanager.yml; do not commit real keys.
+# Alertmanager receiver snippet for the Agent SDK alertmanager channel.
+# Replace ALIAS_OR_LOCAL_BASE and INCIDENT_TRIAGE_WEBHOOK_SECRET.
+#
+# Local (agent-sdk serve --dev):
+#   url: "http://127.0.0.1:3000/incident-triage/v1/channels/alertmanager/"
+# Hosted:
+#   url: "<AGENT_ALIAS_URL>/v1/channels/alertmanager/"
+#
+# For the Grok Bot routine webhook shape instead, see docs/grok-bot/
+# and fixtures/alertmanager/receiver.grok-bot.snippet.yml.
 
 route:
-  receiver: grok-bot-triage
+  receiver: incident-triage-agent
   group_by: ["alertname", "service", "namespace"]
   group_wait: 30s
   group_interval: 5m
@@ -11,19 +18,17 @@ route:
   routes:
     - matchers:
         - severity =~ "critical|warning"
-      receiver: grok-bot-triage
+      receiver: incident-triage-agent
       continue: false
 
 receivers:
-  - name: grok-bot-triage
+  - name: incident-triage-agent
     webhook_configs:
-      - url: "POST_TO_URL"
+      - url: "ALIAS_OR_LOCAL_BASE/v1/channels/alertmanager/"
         send_resolved: true
         max_alerts: 10
         http_config:
           authorization:
             type: Bearer
-            credentials: "ROUTINE_BEARER_KEY"
+            credentials: "INCIDENT_TRIAGE_WEBHOOK_SECRET"
           follow_redirects: true
-
-# Optional: keep a page/Slack receiver as a separate route if Grok Bot is additive.
